@@ -5,25 +5,26 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4.2.2
-    - name: Setup go
-      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b
-      with:
-        go-version: 1.19
-    - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
-      with:
-        path: |
-          ~/go/pkg/mod
-          ~/.cache/go-build
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Run tests
-      run: go test -v -covermode=count -coverprofile=coverage.out
-    - name: Convert coverage to lcov
-      uses: jandelgado/gcov2lcov-action@4e1989767862652e6ca8d3e2e61aabe6d43be28b
-    - name: Coveralls
-      uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b
-      with:
-        github-token: ${{ secrets.github_token }}
-        path-to-lcov: coverage.lcov
+      - uses: actions/checkout@v4.2.2
+        name: Checkout Repository
+      - name: Setup go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.19
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install proftpd-basic
+          sudo useradd -m -d /home/ftp-test ftp-test
+          echo "ftp-test:ftp-test" | sudo chpasswd
+          sudo cp .github/proftpd.conf /etc/proftpd/conf.d/ftp-test.conf
+          sudo systemctl start proftpd
+        name: Setup ProFTPd
+      - name: Run tests
+        run: go test -v -covermode=count -coverprofile=coverage.out
+      - name: Convert coverage to lcov
+        uses: jandelgado/gcov2lcov-action@4e1989767862652e6ca8d3e2e61aabe6d43be28b
+      - name: Coveralls
+        uses: coverallsapp/github-action@648a8eb78e6d50909eff900e4ec85cab4524a45b
+        with:
+          github-token: ${{ secrets.github_token }}
+          path-to-lcov: coverage.lcov
